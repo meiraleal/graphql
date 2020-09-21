@@ -31,13 +31,6 @@ const useChangeCompanyNameMutation = () => {
   return ({ id, name }) => {
     mutate({
       variables: { input: { id, name } },
-      optimisticResponse: {
-        changeCompanyName: {
-          __typename: "Company",
-          id,
-          name,
-        },
-      },
     });
   };
 };
@@ -63,6 +56,16 @@ export const companyAddedSubscription = gql`
 `;
 
 const useCompanyAdded = () => useSubscription(companyAddedSubscription);
+
+export const companyRemovedSubscription = gql`
+  subscription CompanyRemoved {
+    companyRemoved {
+      id
+    }
+  }
+`;
+
+const useCompanyRemoved = () => useSubscription(companyRemovedSubscription);
 
 const query = gql`
   query Companies {
@@ -116,20 +119,6 @@ const useDeleteCompanyMutation = () => {
   return (id) => {
     return deleteCompany({
       variables: { id },
-      update: (store) => {
-        const data = store.readQuery({
-          query,
-        });
-
-        store.writeQuery({
-          query,
-          data: {
-            companies: data.companies.filter(
-              (currentCompany) => currentCompany.id !== id
-            ),
-          },
-        });
-      },
     });
   };
 };
@@ -147,6 +136,7 @@ const useAddCompanyMutation = () => {
 const Companies = () => {
   useCompanyNameChanged();
   const companyAddedSubscription = useCompanyAdded();
+  const companyRemovedSubscription = useCompanyRemoved();
   let { data, loading, error } = useCompaniesQuery();
   let deleteCompany = useDeleteCompanyMutation();
 
@@ -154,8 +144,16 @@ const Companies = () => {
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Ereror :(</p>;
   if (companyAddedSubscription && companyAddedSubscription.data) {
-    const companyAdded = companyAddedSubscription.data.companyAdded;    
-    data.companies.push(companyAdded);
+    const companyAdded = companyAddedSubscription.data.companyAdded;
+    if (!data.companies.find((c) => c.id == companyAdded.id)) {
+      data.companies.push(companyAdded);
+    }
+  }  
+  if (companyRemovedSubscription && companyRemovedSubscription.data) {
+    const companyRemoved = companyRemovedSubscription.data.companyRemoved;
+    data.companies = [
+      ...data.companies.filter((c) => c.id !== companyRemoved.id),
+    ];
   }
   return (
     <div>

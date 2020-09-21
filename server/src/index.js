@@ -51,7 +51,10 @@ const resolvers = {
 
   Mutation: {
     deleteCompany: (_, { id }) => {
-      const company = Company.destroy({ where: { id } });
+      Company.destroy({ where: { id } });
+      pubsub.publish("companyRemoved", {
+        companyRemoved: { id },
+      });
       return true;
     },
     changeCompanyName: async (_, { input }) => {
@@ -75,8 +78,7 @@ const resolvers = {
       };
       pubsub.publish("companyAdded", {
         companyAdded: company,
-      });
-      console.log({ newCompany, company });
+      });      
       return newCompany;
     },
   },
