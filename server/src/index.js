@@ -39,6 +39,7 @@ const typeDefs = gql`
   type Subscription {
     companyNameChanged: Company
     companyAdded: Company
+    companyRemoved: Company
   }
 `;
 
@@ -66,11 +67,16 @@ const resolvers = {
       const company = await Company.create({
         name,
       });
-      const newCompany = { name: company.name, id: company.id };
+      const newCompany = {
+        typename: "Company",
+        __typename: "Company",
+        name: company.name,
+        id: company.id,
+      };
       pubsub.publish("companyAdded", {
-        companyAdded: { company: newCompany },
+        companyAdded: company,
       });
-      console.log(company);
+      console.log({ newCompany, company });
       return newCompany;
     },
   },
@@ -78,6 +84,9 @@ const resolvers = {
   Subscription: {
     companyNameChanged: {
       subscribe: () => pubsub.asyncIterator(["companyNameChanged"]),
+    },
+    companyRemoved: {
+      subscribe: () => pubsub.asyncIterator(["companyRemoved"]),
     },
     companyAdded: {
       subscribe: () => pubsub.asyncIterator(["companyAdded"]),

@@ -11,6 +11,20 @@ export const changeCompanyNameMutation = gql`
   }
 `;
 
+const addCompanyMutation = gql`
+  mutation AddCompany($name: String!) {
+    addCompany(name: $name) {
+      id
+      name
+    }
+  }
+`;
+const deleteCompanyMutation = gql`
+  mutation DeleteCompany($id: Int!) {
+    deleteCompany(id: $id)
+  }
+`;
+
 const useChangeCompanyNameMutation = () => {
   let [mutate] = useMutation(changeCompanyNameMutation);
 
@@ -73,18 +87,22 @@ const ChangeName = ({ company }) => {
   }, [setName, company]);
 
   return (
-    <div>
+    <>
       <input value={name} onChange={(e) => setName(e.target.value)} />
       <button onClick={() => changeName({ id: company.id, name })}>
         Rename
       </button>
-    </div>
+    </>
   );
 };
 
 const AddCompany = () => {
   let addCompany = useAddCompanyMutation();
   let [name, setName] = useState();
+
+  useEffect(() => {
+    setName(name);
+  }, [setName, name]);
   return (
     <div>
       <input value={name} onChange={(e) => setName(e.target.value)} />
@@ -93,14 +111,8 @@ const AddCompany = () => {
   );
 };
 
-const deleteCompanyMutation = gql`
-  mutation DeleteCompany($id: Int!) {
-    deleteCompany(id: $id)
-  }
-`;
-
 const useDeleteCompanyMutation = () => {
-  let [deleteCompany] = useMutation(deleteCompanyMutation); 
+  let [deleteCompany] = useMutation(deleteCompanyMutation);
   return (id) => {
     return deleteCompany({
       variables: { id },
@@ -122,54 +134,41 @@ const useDeleteCompanyMutation = () => {
   };
 };
 
-const addCompanyMutation = gql`
-  mutation AddCompany($name: String!) {
-    addCompany(name: $name) {
-      name
-    }
-  }
-`;
-
 const useAddCompanyMutation = () => {
   let [addCompany] = useMutation(addCompanyMutation);
 
   return (name) => {
     return addCompany({
       variables: { name },
-      optimisticResponse: {
-        addCompany: {
-          __typename: "Company",
-          name,
-        },
-      },
     });
   };
 };
 
 const Companies = () => {
   useCompanyNameChanged();
-  useCompanyAdded();
+  const companyAddedSubscription = useCompanyAdded();
   let { data, loading, error } = useCompaniesQuery();
   let deleteCompany = useDeleteCompanyMutation();
 
   if (!data || !data.companies) return null;
   if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error :(</p>;
-
+  if (error) return <p>Ereror :(</p>;
+  if (companyAddedSubscription && companyAddedSubscription.data) {
+    const companyAdded = companyAddedSubscription.data.companyAdded;    
+    data.companies.push(companyAdded);
+  }
   return (
     <div>
       {data.companies.map((company) => (
         <div key={company.id}>
           <h3>{company.name}</h3>
-          <button onClick={() => deleteCompany(company.id)}>
-            Delete Company
-          </button>
           <ChangeName company={company} />
+          <button onClick={() => deleteCompany(company.id)}>Delete</button>
         </div>
       ))}
-      <br/>
-      <hr/>
-      <br/>
+      <br />
+      <hr />
+      <br />
       <h1>add a new company</h1>
       <AddCompany />
     </div>
